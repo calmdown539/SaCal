@@ -10,7 +10,7 @@ This project is run in a conda virtual environment on Ubuntu 20.04 with CUDA 11.
 Data preparation
 ----
 You will first need to request access for MIMIC dataset:
-+ MIMIC-III v1.4 https://physionet.org/content/mimiciii/1.4v
++ MIMIC-III v1.4 https://physionet.org/content/mimiciii/1.4/
 + MIMIC-IV v2.0 https://physionet.org/content/mimiciv/2.0/
 + MIMIC-CXR-JPG v2.0.0 https://physionet.org/content/mimic-cxr-jpg/2.0.0/
 + MIMIC-IV-NOTE v2.2 https://physionet.org/content/mimic-iv-note/2.2/
