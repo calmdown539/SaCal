@@ -24,7 +24,7 @@ def calculate_graph_loss(A, saliency_scores = None, kl_coef = 0.001,  lambda_bal
     loss = lambda_sps * l1_term - lambda_bal * entropy  + kl_coef * kl_loss 
     return loss
 
-
+### Learnable graph
 class TaskToModuleGraph(nn.Module):
     def __init__(self, num_tasks, num_experts, temperature=1.0):
         super().__init__()
@@ -37,6 +37,7 @@ class TaskToModuleGraph(nn.Module):
         weights = F.softmax(self.A_logits[task_id] / self.temperature,dim=-1)
         return weights  # shape: [num_experts]
 
+### MTL
 class GraphMMoE(nn.Module):
     def __init__(self, query_size, input_size, output_size, num_experts, num_tasks, hidden_size, noisy_gating=False, k=2, device=torch.device('cpu')):
         super(GraphMMoE, self).__init__()
@@ -126,6 +127,7 @@ class GraphMMoE(nn.Module):
             load = self._gates_to_load(gates)
         return gates, load
 
+    ### saliency 
     def compute_expert_saliency(self, expert_outputs, grads):
         used_expert_indices = [i for i, out in enumerate(expert_outputs) if out.requires_grad and out.numel() > 0]
         used_expert_outputs = [expert_outputs[i] for i in used_expert_indices]
