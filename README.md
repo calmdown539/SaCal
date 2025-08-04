@@ -3,6 +3,7 @@ Document Structure
 ```
 CaSa-IML/
 │
+├── run.sh                   # Instructions to run the codes
 ├── README.md                # Project documentation (this file)
 ├── arguments.py             # Configuration file (e.g., hyperparameters, paths)
 ├── utils.py                 # Calculation of metrics and others
