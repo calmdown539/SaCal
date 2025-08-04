@@ -15,14 +15,14 @@ def args_parser():
     parser.add_argument('--resize', default=256, type=int, help='number of epochs to train')
     parser.add_argument('--crop', default=224, type=int, help='number of epochs to train')
 
-    parser.add_argument('--task', type=str, default='phenotyping', help='in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission,diagnosis')
+    parser.add_argument('--task', type=str, default='phenotyping', help='in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission')
     parser.add_argument('--epochs', type=int, default=10, help='number of chunks to train')
     parser.add_argument('--device', type=str, default="cpu", help='cuda:number or cpu')
     parser.add_argument('--num_workers', type=int, default=16, help='num_workers for dataloader')
     parser.add_argument('--seed', type=int, default=40, help='random seed')
 
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
-    parser.add_argument('--model', type=str, default='our', help='our model or baselines')
+    parser.add_argument('--model', type=str, default='our', help='our model')
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--hidden_dim', type=int, default=128)
 
