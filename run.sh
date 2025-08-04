@@ -14,3 +14,19 @@ CUDA_VISIBLE_DEVICES=0 CUDA_LAUNCH_BLOCKING=1 python run_bl.py \
 --save_dir save
 
 ### MultiModN ###
+python mimic.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
+--device cuda --epochs 15\ 
+
+### MulTEHR ###
+python main_multehr.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
+--task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission \
+--epochs 15 --lr 0.0001 --device cuda 
+
+
+### FlexCare ###
+python main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
+--task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 10 --lr 0.0005 --device cuda 
+
+
+### CaSa-IML ###
+python my_main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 15 --lr 0.0001 --device cuda --seed 40
