@@ -25,8 +25,8 @@ cache_dir = "mymodel/pretrained/biobert-base-cased-v1.2"
 
 import torch
 
+### count tokens for interpretation
 def count_seq_positions_in_bins(seq_positions, bins):
-
     seq_positions = torch.tensor(seq_positions) if not isinstance(seq_positions, torch.Tensor) else seq_positions
     bin_counts = []
 
@@ -36,6 +36,7 @@ def count_seq_positions_in_bins(seq_positions, bins):
 
     return bin_counts
 
+### decor reg calculation
 def correlation_matrix(Z1, Z2):
     Z1_centered = Z1 - Z1.mean(dim=0, keepdim=True)
     Z2_centered = Z2 - Z2.mean(dim=0, keepdim=True)
@@ -108,11 +109,12 @@ class OurModel(nn.Module):
         self.transformer_fusion = CoSFuser(d_model = hidden_dim, dim_feedforward=hidden_dim*4, nhead=2, num_layers=layers, num_experts=4)
 
         # MMoe
-        self.mmoe = GraphMMoE(hidden_dim, hidden_dim, hidden_dim, expert_total, 5, hidden_dim, noisy_gating=False, k=expert_k, device=device)
+        self.graphmmoe = GraphMMoE(hidden_dim, hidden_dim, hidden_dim, expert_total, 5, hidden_dim, noisy_gating=False, k=expert_k, device=device)
 
 
 
     def forward(self, ehr, ehr_lengths, use_ehr, img, use_img, note, use_note, demo, use_demo, task_index, labels, criterion):
+        ### for decor reg
         single_modal = torch.FloatTensor().to(self.device)
         # Time series
         ehr_embed = self.ehr_projection(ehr)
@@ -189,10 +191,9 @@ class OurModel(nn.Module):
         multimodal_cls_tokens = multimodal_cls_tokens.repeat(ehr_embed.shape[0], 1, 1)
 
         
-        #multimodal_embed = torch.cat((task_embed, multimodal_cls_tokens, ehr_embed, note_embed, demo_embed), dim=1)
         multimodal_embed = torch.cat((multimodal_cls_tokens, ehr_embed, cxr_embed, note_embed, demo_embed), dim=1)
 
-
+        
         cls_pad_mask = length_to_mask(7*torch.ones(ehr_embed.shape[0]).to(self.device), max_len=7) 
     
 
@@ -205,20 +206,18 @@ class OurModel(nn.Module):
         demo_cls_index = note_cls_index + note_embed.shape[1]
 
     
-        # cross_cls_mask = generate_cross_modal_mask(ehr_cls_index, note_cls_index, demo_cls_index, multimodal_embed.shape[1]).to(self.device)
+        ### mask matrix for fusion
         cross_cls_mask = generate_cross_modal_mask(ehr_cls_index, cxr_cls_index, note_cls_index, demo_cls_index, multimodal_embed.shape[1]).to(self.device)
-
+        ### fusion
         fusion_embed, moe_loss,saliencies, token_positions = self.transformer_fusion(multimodal_embed, mask=cross_cls_mask, src_key_padding_mask=multimodal_pad_mask) 
         
-        
-        
-
+        ### fusion results
         cross_mm_embed = fusion_embed[:, 0:ehr_cls_index]
         single_mm_embed = torch.cat((fusion_embed[:, ehr_cls_index].unsqueeze(1), fusion_embed[:, cxr_cls_index].unsqueeze(1), fusion_embed[:, note_cls_index].unsqueeze(1), fusion_embed[:, demo_cls_index].unsqueeze(1)), dim=1)
         mm_embed = torch.cat((cross_mm_embed, single_mm_embed), dim=1)
         
-
-        scores, mmoe_loss, pred_loss, graph_loss = self.mmoe( mm_embed, task_index, labels, criterion)
+        ### MTL
+        scores, mmoe_loss, pred_loss, graph_loss = self.graphmmoe( mm_embed, task_index, labels, criterion)
         
         # Calculate needed loss
         # 1. Decorrelation loss of combination representation
@@ -227,7 +226,7 @@ class OurModel(nn.Module):
         # 2. Decorrelation loss of each modality representation
         single_decor_loss = decorrelation_loss(single_modal)
 
-
+        # 3. Total loss
         loss = pred_loss + ortho_loss + mmoe_loss + graph_loss + moe_loss + single_decor_loss 
         
 
