@@ -41,7 +41,7 @@ class PatchEmbed(nn.Module):
         return x
 
 
-#def generate_cross_modal_mask(ehr_cls_index, note_cls_index, demo_cls_index, total_lens):
+
 def generate_cross_modal_mask(ehr_cls_index=None, cxr_cls_index=None, note_cls_index=None, demo_cls_index=None, total_lens=None):    
     
     mask = torch.ones(total_lens, total_lens)
