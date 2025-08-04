@@ -8,6 +8,8 @@ CaSa-IML/
 ├── utils.py                 # Calculation of metrics and others
 ├── my_main.py               # Model training
 │
+├── normoalizers/            # Definition of normoalizers for data loading
+│  
 ├── dataset/                 # Directory for data loading
 │   └── dataloader.py        # Dataloader for data loading 
 │
