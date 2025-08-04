@@ -1,3 +1,40 @@
+Document Structure
+
+```
+CaSa-IML/
+│
+├── README.md                # Project documentation (this file)
+├── arguments.py             # Configuration file (e.g., hyperparameters, paths)
+├── utils.py                 # Calculation of metrics and others
+├── my_main.py               # Model training
+│
+├── dataset/                 # Directory for data loading
+│   └── dataloader.py        # Dataloader for data loading 
+│
+├── mimic4extract/           # Data preprocessing 
+│   ├── README.md            # Instruction for data processing
+│   ├── utils.py             # Functions for preprocessing
+│   ├── __init__.py          # Initiate
+│   ├── subject.py           # 
+│   ├── readers.py           #
+│   ├── mimic3csv.py         # Functions for mimic dataset processing
+│   ├── preprocessing.py     # Data Preprocessing
+│   ├── resources/           # Detailed information of ICD9 and ICD10 for preprocessing
+│   └── scripts/             # Multimodal extraction and multitask dataset creation  
+│         
+├── mymodel/                 # Model definitions
+│   ├── fusion_model.py      # Model architecture 
+│   ├── module.py            # Architecture of modules used in fusion_model.py, e.g., Transformer or MoE
+│   └── graph_MMoE.py        # Definition of Task-to-Module Graph and MTL
+│
+├── baselines/               # Baselines
+    ├── FlexCare/            # Implementation of FlexCare
+    ├── IRENE/               # Implementation of IRENE
+    ├── MedFuse/             # Implementation of MedFuse
+    ├── MulTEHR/             # Implementation of MulTEHR
+    └── MultiModN/           # Implementation of MultiModN
+```
+
 Requirements
 ----
 This project is run in a conda virtual environment on Ubuntu 20.04 with CUDA 11.1. 
