@@ -6,7 +6,6 @@ parser = args_parser()
 args = parser.parse_args()
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 from collections import Counter
 import torch
 import torch.optim as optim
