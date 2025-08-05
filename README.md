@@ -30,7 +30,7 @@ CaSa-IML/
 │   ├── module.py            # Architecture of modules used in fusion_model.py, e.g., Transformer or MoE
 │   └── graph_MMoE.py        # Definition of Task-to-Module Graph and MTL
 │
-├── baselines/               # Baselines
+└── baselines/               # Baselines
     ├── FlexCare/            # Implementation of FlexCare
     ├── IRENE/               # Implementation of IRENE
     ├── MedFuse/             # Implementation of MedFuse
