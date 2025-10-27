@@ -1,7 +1,7 @@
 Document Structure
 
 ```
-CaSa-IML/
+SaCal/
 │
 ├── run.sh                   # Instructions to run the codes
 ├── README.md                # Project documentation (this file)
