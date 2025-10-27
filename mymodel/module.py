@@ -188,6 +188,22 @@ def generate_cross_modal_mask(ehr_cls_index=None, cxr_cls_index=None, note_cls_i
     return mask
 
 
+class MLP(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, dropout_rate=0.1):
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, output_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout_rate)
+        self.soft = nn.Softmax(1)
+
+    def forward(self, x):
+        out = self.fc1(x)
+        out = self.relu(out)
+        #out = self.dropout(out)
+        out = self.fc2(out)
+        # out = self.relu(out)
+        return out
 
 class CoSFuserMoELayer(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_experts, capacity_factor=1.0, alpha = 0.001):
