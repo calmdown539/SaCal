@@ -1,8 +1,13 @@
-ICDE-2026
-SaCal: An Efficient Saliency-Guided Causal Framework for Interpretable Healthcare Analytics
+SaCal: An Efficient Saliency-Guided Causal Framework for Interpretable Healthcare Analytics (ICDE)
+----
+We propose SaCal, a novel multi-modal multi-task learning framework integrating saliency and causal theories for interpretable healthcare analytics. 
+SaCal combines saliency-guided controllable fusion to dynamically adjust modality contributions with a causal-aware Task-to-Module Graph that mitigates confounder effects in multi-task learning. 
+A de-correlation regularization further enhances representation diversity and disentangles fusion features for causal awareness. 
+And adaptive activation and graph sparsity strategies are proved efficient.
+Experiments show that SaCal improves multi-task prediction and provides modality-level interpretability supporting clinical decision-making.
 
 Document Structure
-
+----
 ```
 SaCal/
 │
