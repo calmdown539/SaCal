@@ -1,5 +1,5 @@
 ### IRENE ###
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -W ignore irene.py --CLS 8 --BSZ 64 --DATA_DIR ./data --SET_TYPE test.pkl
+CUDA_VISIBLE_DEVICES=0,1 python -W ignore irene.py --CLS 8 --BSZ 64 --DATA_DIR ./data --SET_TYPE test.pkl
 
 ### MedFuse ###
 CUDA_VISIBLE_DEVICES=0 CUDA_LAUNCH_BLOCKING=1 python run_bl.py \
@@ -11,16 +11,16 @@ CUDA_VISIBLE_DEVICES=0 CUDA_LAUNCH_BLOCKING=1 python run_bl.py \
 --task in-hospital-mortality \
 --labels_set mortality \
 --fusion_type lstm \
---save_dir save
+--save_dir medfuse_model
 
 ### MultiModN ###
 python mimic.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
---device cuda --epochs 15\ 
+--device cuda --epochs 10\ 
 
 ### MulTEHR ###
 python main_multehr.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
 --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission \
---epochs 15 --lr 0.0001 --device cuda 
+--epochs 10 --lr 0.0001 --device cuda 
 
 
 ### FlexCare ###
@@ -29,4 +29,4 @@ python main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
 
 
 ### CaSa-IML ###
-python my_main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 15 --lr 0.0001 --device cuda --seed 40
+python my_main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 10 --lr 0.0001 --device cuda --seed 40
