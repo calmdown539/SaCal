@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from mymodel.module import SwitchTransformerEncoder, generate_cross_modal_mask, PatchEmbed
+from mymodel.module import  PatchEmbed
 from transformers import AutoModel, AutoTokenizer
 import os
 import random
@@ -20,7 +20,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-cache_dir = "pretrained/biobert-base-cased-v1.2"
+cache_dir = "mymodel/pretrained/biobert-base-cased-v1.2"
 
 class KLDivergence(nn.Module):
     def __init__(self):
@@ -57,7 +57,7 @@ class HGT(nn.Module):
         self.ehr_projection = nn.Linear(ehr_dim, hidden_dim)
 
         # Process image data
-        #self.patch_projection = PatchEmbed(patch_size=16, embed_dim=hidden_dim)
+        self.patch_projection = PatchEmbed(patch_size=16, embed_dim=hidden_dim)
 
 
 
@@ -89,18 +89,18 @@ class HGT(nn.Module):
 
 
 
-    def forward(self, ehr, ehr_lengths, use_ehr,  demo, use_demo, task_index, labels, criterion):
+    def forward(self, ehr, ehr_lengths, use_ehr, img, use_img, note, use_note, demo, use_demo, task_index, labels, criterion):
         task_embed = self.task_embedding(task_index).unsqueeze(1)
         
         # Time series
         ehr_embed = self.ehr_projection(ehr)
         
-        cxr
+        #cxr
         cxr_embed = self.patch_projection(img)
         
 
 
-        Text
+        # Text
         with torch.no_grad():
             encoding = self.tokenizer(note, padding=True, truncation=True, max_length=512, add_special_tokens=False, return_tensors='pt')
             input_ids = encoding["input_ids"].to(self.device)
@@ -120,13 +120,13 @@ class HGT(nn.Module):
         ms = np.array([col[1] for col in demo])
         insu = np.array([col[2] for col in demo])
         gender = np.array([col[3] for col in demo])
-        #age = np.array([col[4] for col in demo])
+        age = np.array([col[4] for col in demo])
         race_embed = self.demo_projection_race(torch.from_numpy(race).float().to(self.device))
         ms_embed = self.demo_projection_ms(torch.from_numpy(ms).float().to(self.device))
         insu_embed = self.demo_projection_insu(torch.from_numpy(insu).float().to(self.device))
         gender_embed = self.demo_projection_gender(torch.from_numpy(gender).float().to(self.device))
-        #age_embed = self.demo_projection_age(torch.from_numpy(age).float().to(self.device))
-        demo_embed = torch.stack([race_embed, ms_embed, insu_embed, gender_embed], dim = 1)
+        age_embed = self.demo_projection_age(torch.from_numpy(age).float().to(self.device))
+        demo_embed = torch.stack([race_embed, ms_embed, insu_embed, gender_embed,age_embed], dim = 1)
 
         multimodal_embed = torch.cat((ehr_embed, demo_embed), dim=1)
 
