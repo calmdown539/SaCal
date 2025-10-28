@@ -6,6 +6,33 @@ A de-correlation regularization further enhances representation diversity and di
 And adaptive activation and graph sparsity strategies are proved efficient.
 Experiments show that SaCal improves multi-task prediction and provides modality-level interpretability supporting clinical decision-making.
 
+## 🏗️ Framework
+
+<p align="center">
+  <img src="framework.jpg" alt="SaCal Framework Overview" width="80%">
+</p>
+
+*Figure: Overview of the proposed SaCal framework, combining De-correlated Modality Extraction, CoS-Fuser, and causal-aware Task-to-Module Graph Learning.*
+
+---
+
+## 📊 Applications
+
+SaCal is designed for multi-modal healthcare data, including:
+- 🩺 **Time-series physiological data**
+- 📄 **Clinical notes**
+- 👥 **Demographic information**
+- 🔗 **Graph data**
+
+It can be applied to tasks such as:
+- In-hospital mortality prediction (IHM)  
+- Length of stay estimation (LOS)  
+- Readmission prediction (REA)
+- Phenotyping prediction (PHE)
+- Decompensation prediction (DEC)
+
+---
+
 Document Structure
 ----
 ```
