@@ -1,4 +1,5 @@
 ## MIMIC-IV multimodal data process
+By running the following commands, multi-modal data for different tasks is obtained and stored, and then loaded by the model.
 
 1. Extract patient basic information from raw MIMIC-IV csv files and generate some labels for different tasks 
 ```python
