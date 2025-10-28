@@ -102,9 +102,9 @@ class FusionTrainer(Trainer):
                 #     y = np.array(ys[:,4:], dtype=np.float32)
 
                 y = torch.from_numpy(ys).float().to(self.device)
-                #img = img.to(self.device)
+                img = img.to(self.device)
 
-                output = self.model(x=x, img=None, note=None, demo=demo, seq_lengths=seq_lengths)
+                output = self.model(x=x, img=img, note=None, demo=demo, seq_lengths=seq_lengths)
                 pred = output[self.args.fusion_type].squeeze()
                 y = y.squeeze()
                 if self.args.task == 'length-of-stay':
@@ -146,7 +146,7 @@ class FusionTrainer(Trainer):
                 x, seq_lengths, demo, ys = data
                 x = torch.from_numpy(x).float().to(self.device)
                 y = torch.from_numpy(ys).float().to(self.device)
-                #img = img.to(self.device)
+                img = img.to(self.device)
                 # if self.args.task == 'in-hospital-mortality':
                 #     y = np.array(ys[:,0], dtype=np.float32)
                 # elif self.args.task == 'decompensation':
@@ -157,7 +157,7 @@ class FusionTrainer(Trainer):
                 #     y = np.array(ys[:,3], dtype=np.float32)
                 # else:
                 #     y = np.array(ys[:,4:], dtype=np.float32)
-                output = self.model(x=x, img=None, note=None, demo=demo, seq_lengths=seq_lengths)
+                output = self.model(x=x, img=img, note=None, demo=demo, seq_lengths=seq_lengths)
                 
                 pred = output[self.args.fusion_type].squeeze()
                 y = y.squeeze()
@@ -272,9 +272,9 @@ class FusionTrainer(Trainer):
                     # else:
                     #     y = np.array(ys[:,4:], dtype=np.float32)
                     y = torch.from_numpy(ys).float().to(self.device)
-                    #img = img.to(self.device)
+                    img = img.to(self.device)
                     
-                    output = self.model(x=x, img=None, note=None, demo=demo, seq_lengths=seq_lengths)
+                    output = self.model(x=x, img=img, note=None, demo=demo, seq_lengths=seq_lengths)
                     # print(y)
                     # print(output[self.args.fusion_type])
                     pred = output[self.args.fusion_type].squeeze()
