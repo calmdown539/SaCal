@@ -6,7 +6,7 @@ parser = args_parser()
 args = parser.parse_args()
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 import torch
 import torch.optim as optim
@@ -19,9 +19,9 @@ import random
 
 from torch.utils.data import Dataset, DataLoader
 from utils import Discretizer, Normalizer, my_metrics, is_ascending
-from dataset.dataloader_nocxr import get_multimodal_datasets
+from dataset.dataloader import get_multimodal_datasets
 # model_new + main_new = FlexCare
-from mymodel.model_new2 import FlexCare
+from mymodel.model_new import FlexCare
 
 torch.autograd.set_detect_anomaly(True)
 # torch.use_deterministic_algorithms(True)
@@ -55,29 +55,26 @@ def my_collate(batch):
     ehr_length = [0 if mask_ehr[i] == 0 else ehr_length[i] for i in range(len(ehr_length))]  # Remove fictitious time series
 
     # CXR image data    (When missing, use an all-zero vector with shape of [3,224,224])
-    # cxr = torch.stack([item[1] if item[1] != None else torch.zeros(3, 224, 224) for item in batch])
-    # mask_cxr = np.array([1 if item[1] != None else 0 for item in batch])
+    cxr = torch.stack([item[1] if item[1] != None else torch.zeros(3, 224, 224) for item in batch])
+    mask_cxr = np.array([1 if item[1] != None else 0 for item in batch])
 
     # Note text data    (An empty string has been used to indicate modality missing)
-    # note = [item[2] for item in batch]
-    # mask_note = np.array([1 if item[2] != '' else 0 for item in batch])
+    note = [item[2] for item in batch]
+    mask_note = np.array([1 if item[2] != '' else 0 for item in batch])
 
     # Demographic data
 
-    demo = [item[1] for item in batch]    
-    mask_demo = np.array([1 if item[1] != '' else 0 for item in batch])
+    demo = [item[3] for item in batch]    
+    mask_demo = np.array([1 if item[3] != '' else 0 for item in batch])
     #print("demo",demo)
     # Label
-    label = np.array([item[2] for item in batch]).reshape(len(batch),-1)
+    label = np.array([item[4] for item in batch]).reshape(len(batch),-1)
 
     # Task
     replace_dict = {'in-hospital-mortality':0, 'decompensation':1, 'phenotyping':2, 'length-of-stay':3, 'readmission':4, 'drg':5}
-    task_index = np.array([replace_dict[item[5]] if item[5] in replace_dict else -1 for item in batch])
+    task_index = np.array([replace_dict[item[7]] if item[7] in replace_dict else -1 for item in batch])
 
-    #return [ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, label, task_index]
-    #return [ehr, ehr_length, mask_ehr, demo, mask_demo, note, mask_note, label, task_index]
-    return [ehr, ehr_length, mask_ehr, demo, mask_demo, label, task_index]
-
+    return [ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, label, task_index]
 
 # Pad the time series to the same length
 def pad_zeros(arr, min_length=None):
@@ -91,7 +88,7 @@ def pad_zeros(arr, min_length=None):
 
 
 def read_timeseries(path):
-    path = f'{args.ehr_path}/2_episode1_timeseries.csv'
+    path = f'{args.ehr_path}/10151556_episode1_timeseries.csv'
     ret = []
     with open(path, "r") as tsfile:
         header = tsfile.readline().strip().split(',')
@@ -167,16 +164,15 @@ def main():
                 for i, data in enumerate(tqdm_range):
                     optimizer.zero_grad()
                 
-                    ehr, ehr_length, mask_ehr, demo, mask_demo, label, task_index = data
+                    ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, label, task_index = data
                     ehr = torch.from_numpy(ehr).float().to(device)
-                    # demo = torch.from_numpy(demo).float().to(device)
-                    # cxr = cxr.to(device)
+                    cxr = cxr.to(device)
                     mask_ehr = torch.from_numpy(mask_ehr).long().to(device)
-                    # mask_note = torch.from_numpy(mask_note).long().to(device)
+                    mask_note = torch.from_numpy(mask_note).long().to(device)
                     mask_demo = torch.from_numpy(mask_demo).long().to(device)
-                    # mask_cxr = torch.from_numpy(mask_cxr).long().to(device)
-
+                    mask_cxr = torch.from_numpy(mask_cxr).long().to(device)
                     y_true = torch.from_numpy(label).float().to(device)
+
 
                     # Choose loss function based on the task
                     if task_now in ['length-of-stay','drg']:
@@ -186,27 +182,9 @@ def main():
                         criterion_now = criterion
 
                     task_index = torch.from_numpy(task_index).long().to(device)
-                    y_pred = model(ehr, ehr_length, mask_ehr, demo, mask_demo, None, None,  task_index, y_true, criterion_now)
+                    y_pred = model(ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, task_index, y_true, criterion_now)
                     y_pred, loss = y_pred
 
-                    
-                    
-
-                    
-                    #print(y_true.shape,y_pred.shape)
-                    '''
-                    if task_now == 'diagnosis':
-                        label_mask = (y_true > -1)
-                        y_pred2 = y_pred.clone()
-                        y_true2 = y_true.clone()
-                        y_pred = y_pred[label_mask]
-                        y_true = y_true[label_mask]
-                        loss = criterion_now(y_pred, y_true)
-                        y_pred = y_pred2
-                        y_true = y_true2
-                    else:
-                        loss = criterion_now(y_pred, y_true)
-                    '''
                     
                     loss = loss*task_weight[task_now]
                    
@@ -235,14 +213,14 @@ def main():
                     outGT = torch.FloatTensor().to(device)
                     outPRED = torch.FloatTensor().to(device)
                     for i, data in enumerate(tqdm_range):
-                        ehr, ehr_length, mask_ehr, demo, mask_demo,  label, task_index = data
+                        ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, label, task_index = data
                         ehr = torch.from_numpy(ehr).float().to(device)
                         #demo = torch.from_numpy(demo).float().to(device)
-                        #cxr = cxr.to(device)
+                        cxr = cxr.to(device)
                         mask_ehr = torch.from_numpy(mask_ehr).long().to(device)
-                        # mask_note = torch.from_numpy(mask_note).long().to(device)
+                        mask_note = torch.from_numpy(mask_note).long().to(device)
                         mask_demo = torch.from_numpy(mask_demo).long().to(device)
-                        #mask_cxr = torch.from_numpy(mask_cxr).long().to(device)
+                        mask_cxr = torch.from_numpy(mask_cxr).long().to(device)
 
                         y_true = torch.from_numpy(label).float().to(device)
                         # Choose loss function based on the task
@@ -254,24 +232,10 @@ def main():
 
                         
                         task_index = torch.from_numpy(task_index).long().to(device)
-                        y_pred = model(ehr, ehr_length, mask_ehr, demo, mask_demo, None, None, task_index, y_true, criterion_now)
-
-
+                        y_pred = model(ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, task_index, y_true, criterion_now)
 
                         y_pred = y_pred.reshape(ehr.shape[0], -1)
-                        '''
-                        if task_now == 'diagnosis':
-                            label_mask = (y_true > -1)
-                            y_pred2 = y_pred.clone()
-                            y_true2 = y_true.clone()
-                            y_pred = y_pred[label_mask]
-                            y_true = y_true[label_mask]
-                            loss = criterion_now(y_pred, y_true)
-                            y_pred = y_pred2
-                            y_true = y_true2
-                        else:
-                            loss = criterion_now(y_pred, y_true)
-                        '''
+
                         loss = criterion_now(y_pred, y_true)
                         valid_loss += loss.item()
                         task_val_loss += loss.item()
@@ -330,14 +294,14 @@ def main():
                 outPRED = torch.FloatTensor().to(device)
                 for i, data in enumerate(tqdm_range):
 
-                    ehr, ehr_length, mask_ehr, demo, mask_demo,  label, task_index = data
+                    ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, label, task_index = data
                     ehr = torch.from_numpy(ehr).float().to(device)
                     #demo = torch.from_numpy(demo).float().to(device)
-                    #cxr = cxr.to(device)
+                    cxr = cxr.to(device)
                     mask_ehr = torch.from_numpy(mask_ehr).long().to(device)
-                    # mask_note = torch.from_numpy(mask_note).long().to(device)
+                    mask_note = torch.from_numpy(mask_note).long().to(device)
                     mask_demo = torch.from_numpy(mask_demo).long().to(device)
-                    #mask_cxr = torch.from_numpy(mask_cxr).long().to(device)
+                    mask_cxr = torch.from_numpy(mask_cxr).long().to(device)
 
                     y_true = torch.from_numpy(label).float().to(device)
 
@@ -350,22 +314,9 @@ def main():
 
                     
                     task_index = torch.from_numpy(task_index).long().to(device)
-                    y_pred = model(ehr, ehr_length, mask_ehr, demo, mask_demo, None, None,  task_index, y_true, criterion_now)
+                    y_pred = model(ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, task_index, y_true, criterion_now)
 
                     y_pred = y_pred.reshape(ehr.shape[0], -1)
-                    '''
-                    if task_now == 'diagnosis':
-                        label_mask = (y_true > -1)
-                        y_pred2 = y_pred.clone()
-                        y_true2 = y_true.clone()
-                        y_pred = y_pred[label_mask]
-                        y_true = y_true[label_mask]
-                        loss = criterion_now(y_pred, y_true)
-                        y_pred = y_pred2
-                        y_true = y_true2
-                    else:
-                        loss = criterion_now(y_pred, y_true)
-                    '''
                     loss = criterion_now(y_pred, y_true)
                     test_loss += loss.item()
 
