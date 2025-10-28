@@ -1,3 +1,5 @@
+# code modules for data loading, result evaluation and so on
+
 from __future__ import absolute_import
 from __future__ import print_function
 
@@ -11,14 +13,11 @@ import pickle
 import json
 import os
 
-
 def is_ascending(lst):
     for i in range(1, len(lst)):
         if lst[i-1] > lst[i]:
             return 0  
     return 1  
-
-
 
 class Discretizer:
     def __init__(self, timestep=0.8, store_masks=True, impute_strategy='zero', start_time='zero',
