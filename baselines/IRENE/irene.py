@@ -26,7 +26,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 disease_list = ['COPD', 'Bronchiectasis', 'Pneumothorax', 'Pneumonia', 'ILD', 'Tuberculosis', 'Lung cancer', 'Pleural effusion']
-cache_dir = "/data2/linfx/FlexCare-main/mymodel/pretrained/biobert-base-cased-v1.2"
+cache_dir = "mymodel/pretrained/biobert-base-cased-v1.2"
 bert = AutoModel.from_pretrained(cache_dir).to(device)
 tokenizer = AutoTokenizer.from_pretrained(cache_dir)
 
