@@ -186,6 +186,7 @@ class OurModel(nn.Module):
 
         # Multimodal fusion
         multimodal_cls_tokens = self.mm_cls_token
+        # 6 types of pair-wise modality combinations from 4 modalities
         for i in range(6):
             multimodal_cls_tokens = torch.cat((multimodal_cls_tokens, self.cross_cls_tokens[i].unsqueeze(0)), dim=1)
         multimodal_cls_tokens = multimodal_cls_tokens.repeat(ehr_embed.shape[0], 1, 1)
@@ -216,7 +217,7 @@ class OurModel(nn.Module):
         single_mm_embed = torch.cat((fusion_embed[:, ehr_cls_index].unsqueeze(1), fusion_embed[:, cxr_cls_index].unsqueeze(1), fusion_embed[:, note_cls_index].unsqueeze(1), fusion_embed[:, demo_cls_index].unsqueeze(1)), dim=1)
         mm_embed = torch.cat((cross_mm_embed, single_mm_embed), dim=1)
         
-        ### MTL
+        ### multi-task graph learning
         scores, mmoe_loss, pred_loss, graph_loss = self.graphmmoe( mm_embed, task_index, labels, criterion)
         
         # Calculate needed loss
