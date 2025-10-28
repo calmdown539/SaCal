@@ -21,13 +21,11 @@ from utils import Discretizer, Normalizer, my_metrics, is_ascending
 from dataset.dataloader import get_multimodal_datasets
 from mymodel.fusion_model import OurModel
 
-torch.autograd.set_detect_anomaly(True)
 seed = args.seed
 torch.manual_seed(seed)
 np.random.seed(seed)
 random.seed(seed)
 
-torch.cuda.empty_cache()
 num_workers = args.num_workers
 adjust_step = 2
 
@@ -36,7 +34,7 @@ if args.device != "cpu":
 else:
     device = "cpu"
 args.task = args.task.split(',')
-print(device)
+#print(device)
 task_weight = {'in-hospital-mortality':0.2,
                'length-of-stay':0.5,
                 'phenotyping':1,
@@ -45,29 +43,34 @@ task_weight = {'in-hospital-mortality':0.2,
 
 
 def my_collate(batch):
+    # read time-series data
     ehr = [item[0][-512:] if np.array_equal(item[0], None) is False else np.zeros((1,76)) for item in batch]
     ehr, ehr_length = pad_zeros(ehr)
     mask_ehr = np.array([1 if np.array_equal(item[0], None) is False else 0 for item in batch])     
     ehr_length = [0 if mask_ehr[i] == 0 else ehr_length[i] for i in range(len(ehr_length))]  
 
+    # read image data
     cxr = torch.stack([item[1] if item[1] != None else torch.zeros(3, 224, 224) for item in batch])
     mask_cxr = np.array([1 if item[1] != None else 0 for item in batch])
 
+    # read clinic notes
     note = [item[2] for item in batch]
     mask_note = np.array([1 if item[2] != '' else 0 for item in batch])
 
-
+    # read demographic data
     demo = [item[3] for item in batch]    
     mask_demo = np.array([1 if item[3] != '' else 0 for item in batch])
 
+    # read true labels
     label = np.array([item[4] for item in batch]).reshape(len(batch),-1)
 
+    # number the tasks
     replace_dict = {'in-hospital-mortality':0, 'decompensation':1, 'phenotyping':2, 'length-of-stay':3, 'readmission':4}
     task_index = np.array([replace_dict[item[7]] if item[7] in replace_dict else -1 for item in batch])
 
     return [ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, label, task_index]
 
-
+# pad missing values
 def pad_zeros(arr, min_length=None):
     dtype = arr[0].dtype
     seq_length = [x.shape[0] for x in arr]
@@ -183,8 +186,9 @@ def main():
                     train_loss += loss.item()
                     loss.backward()
                     optimizer.step()
+                    
+            # interpretation 
             count_dict = Counter(interpretation)
-        
             print(f"Key modals for {task_now}:{count_dict}")
             with open(file_path, "a", encoding='utf-8') as f:
                 f.write('Key modals for' + str(task_now)+'\n')
@@ -192,12 +196,10 @@ def main():
                     f.write(f"{val} : {count} ")
                 
         print(f'Train loss:{train_loss}\n' )
-
         with open(file_path, "a", encoding='utf-8') as f:
             f.write('Epoch:' + str(epoch) + '\n')
             f.write('lr:'+str(multi_lr)+ '\n')
             f.write('Train loss:'+str(train_loss)+'\n')
-
 
         with torch.no_grad():
             # Valid
@@ -228,12 +230,8 @@ def main():
                         else:
                             criterion_now = criterion
 
-                        
                         task_index = torch.from_numpy(task_index).long().to(device)
                         y_pred = model(ehr, ehr_length, mask_ehr, cxr, mask_cxr, note, mask_note, demo, mask_demo, task_index, y_true, criterion_now)
-
-
-
                         y_pred = y_pred.reshape(ehr.shape[0], -1)
                         loss = criterion_now(y_pred, y_true)
                         valid_loss += loss.item()
