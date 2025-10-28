@@ -5,11 +5,9 @@ from arguments import args_parser
 parser = args_parser()
 args = parser.parse_args()
 
-
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
 
 from ehr_utils.preprocessing import Discretizer, Normalizer
 from datasets.ehr_dataset import get_datasets
@@ -57,24 +55,23 @@ def pad_zeros(arr, min_length=None):
     return np.array(ret), seq_length
 
 def my_collate(batch):
-    # Time series data  (When missing, use an all-zero vector with shape of [1,76])
+    # Time series data  
     ehr = [item[0][-512:] if np.array_equal(item[0], None) is False else np.zeros((1,76)) for item in batch]
     ehr, ehr_length = pad_zeros(ehr)
     
+    # CXR image data   
+    cxr = torch.stack([item[1] if item[1] != None else torch.zeros(3, 224, 224) for item in batch])
 
-    # CXR image data    (When missing, use an all-zero vector with shape of [3,224,224])
-    #cxr = torch.stack([item[1] if item[1] != None else torch.zeros(3, 224, 224) for item in batch])
-
-    # Note text data    (An empty string has been used to indicate modality missing)
-    # note = [item[2] for item in batch]
+    # Note text data   
+    note = [item[2] for item in batch]
 
     # Demographic data
 
-    demo = [item[1] for item in batch]    
+    demo = [item[3] for item in batch]    
     # Label
-    label = np.array([item[2] for item in batch]).reshape(len(batch),-1)
+    label = np.array([item[4] for item in batch]).reshape(len(batch),-1)
 
-    return [ehr, ehr_length, demo, label]
+    return [cxr, note, ehr, ehr_length, demo, label]
 
 def main():
 
