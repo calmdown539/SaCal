@@ -9,6 +9,7 @@ import glob
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
+# load multi-modal data
 class Multimodal_dataset(Dataset):
     def __init__(self, discretizer, normalizer, listfile, ehr_dir, cxr_dir, task, transform=None, return_names=True, period_length=48.0):
         self.return_names = return_names
