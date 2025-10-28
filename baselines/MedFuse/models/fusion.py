@@ -46,7 +46,7 @@ class Fusion(nn.Module):
         # self.kl_loss = KLDivLoss()
 
         hidden_dim = self.args.dim
-        cache_dir = '/data2/linfx/FlexCare-main/mymodel/pretrained/biobert-base-cased-v1.2'
+        cache_dir = 'mymodel/pretrained/biobert-base-cased-v1.2'
         # Process demographic data
         self.demo_projection_race = nn.Linear(5, hidden_dim)  # (race,marital_status,insurance,gender,age)
         self.demo_projection_ms = nn.Linear(5, hidden_dim)
@@ -75,12 +75,12 @@ class Fusion(nn.Module):
         ms = np.array([col[1] for col in demo])
         insu = np.array([col[2] for col in demo])
         gender = np.array([col[3] for col in demo])
-        #age = np.array([col[4] for col in demo])
+        age = np.array([col[4] for col in demo])
         race_embed = self.demo_projection_race(torch.from_numpy(race).float().to(self.device))
         ms_embed = self.demo_projection_ms(torch.from_numpy(ms).float().to(self.device))
         insu_embed = self.demo_projection_insu(torch.from_numpy(insu).float().to(self.device))
         gender_embed = self.demo_projection_gender(torch.from_numpy(gender).float().to(self.device))
-        #age_embed = self.demo_projection_age(torch.from_numpy(age).float().to(self.device))
+        age_embed = self.demo_projection_age(torch.from_numpy(age).float().to(self.device))
         demo_embed = torch.stack([race_embed, ms_embed, insu_embed, gender_embed], dim = 1)
         return demo_embed
     def process_note_data(self,note):
@@ -104,7 +104,7 @@ class Fusion(nn.Module):
     def forward(self, x, img=None, note=None, demo=None, seq_lengths=None, pairs=None):
 
         demo_feats = self.process_demo_data(demo)
-        #note_feats = self.process_note_data(note)
+        note_feats = self.process_note_data(note)
 
         if self.args.labels_set == 'radiology':
             _ , ehr_feats = self.ehr_model(x, seq_lengths)
@@ -121,18 +121,18 @@ class Fusion(nn.Module):
 
             _ , ehr_feats = self.ehr_model(x, seq_lengths)
             
-            #cxr_feats = self.cxr_model(img)
-            #cxr_feats = self.projection(cxr_feats)
+            cxr_feats = self.cxr_model(img)
+            cxr_feats = self.projection(cxr_feats)
 
             #cxr_feats[list(~np.array(pairs))] = 0
             if len(ehr_feats.shape) == 1:
                 # print(ehr_feats.shape, cxr_feats.shape)
                 # import pdb; pdb.set_trace()
                 feats = ehr_feats[None,None,:]
-                #feats = torch.cat([feats, cxr_feats[:,None,:]], dim=1)
+                feats = torch.cat([feats, cxr_feats[:,None,:]], dim=1)
             else:
                 feats = ehr_feats[:,None,:]
-                #feats = torch.cat([feats, cxr_feats[:,None,:]], dim=1)
+                feats = torch.cat([feats, cxr_feats[:,None,:]], dim=1)
         seq_lengths = np.array([1] * len(seq_lengths))
         #seq_lengths[pairs] = 2
         feats = torch.cat([feats, demo_feats], dim=1)
@@ -148,9 +148,9 @@ class Fusion(nn.Module):
         return {
             'lstm': fused_preds,
             'ehr_feats': ehr_feats,
-            #'cxr_feats': cxr_feats,
+            'cxr_feats': cxr_feats,
             'demo_feats': demo_feats,
-            #'note_feats': note_feats,
+            'note_feats': note_feats,
             }
 
     '''
