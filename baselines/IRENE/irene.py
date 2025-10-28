@@ -1,22 +1,16 @@
 from __future__ import print_function, division 
 import os
+
 import sys
 import torch
-import pandas as pd
-from skimage import io, transform
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
-from torch import nn
 from transformers import AutoModel, AutoTokenizer
 import pickle
-import pandas as pd
-from PIL import Image
 import argparse
 from torch.cuda import amp
 
-from sklearn.metrics import roc_auc_score, precision_recall_curve, accuracy_score, cohen_kappa_score, mean_squared_error, f1_score
+from sklearn.metrics import roc_auc_score, precision_recall_curve, f1_score
 from sklearn import metrics
 from models.modeling_irene import IRENE, CONFIGS
 from tqdm import tqdm
@@ -28,11 +22,11 @@ import datetime
 tk_lim = 40
 ehr_win = 48
 
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
 
 disease_list = ['COPD', 'Bronchiectasis', 'Pneumothorax', 'Pneumonia', 'ILD', 'Tuberculosis', 'Lung cancer', 'Pleural effusion']
-cache_dir = "pretrained/biobert-base-cased-v1.2"
+cache_dir = "/data2/linfx/FlexCare-main/mymodel/pretrained/biobert-base-cased-v1.2"
 bert = AutoModel.from_pretrained(cache_dir).to(device)
 tokenizer = AutoTokenizer.from_pretrained(cache_dir)
 
@@ -123,10 +117,10 @@ class Data(Dataset):
 
         label = self.mm_data[k]['label'].astype('float32')
         
-        # note = self.mm_data[k]['pdesc']
-        # note = get_note_embedding(note, self.tokenizer, self.bert_model, self.device)
-        # note = torch.from_numpy(np.array(note)).float()
-        # note = note.repeat(tk_lim, 1)
+        note = self.mm_data[k]['pdesc']
+        note = get_note_embedding(note, self.tokenizer, self.bert_model, self.device)
+        note = torch.from_numpy(np.array(note)).float()
+        note = note.repeat(tk_lim, 1)
         #print(note.shape)
 
         demo = torch.from_numpy(np.array(self.mm_data[k]['bics'])).float()
@@ -140,12 +134,12 @@ class Data(Dataset):
             pad = torch.zeros(ehr_len - ehr.shape[0], ehr.shape[1])
             ehr = torch.cat([ehr, pad], dim=0)
 
-        # if self.mm_data[k]['img'] == None:
-        #     self.mm_data[k]['img'] = torch.zeros(3, 224, 224)
+        if self.mm_data[k]['img'] == None:
+            self.mm_data[k]['img'] = torch.zeros(3, 224, 224)
             
-        #img = self.mm_data[k]['img'].float()
+        img = self.mm_data[k]['img'].float()
         #return img, label, note, ehr
-        return label, demo, ehr
+        return label, img, note , demo, ehr
 
 def test(args):
     torch.manual_seed(0)
@@ -160,7 +154,7 @@ def test(args):
     val_loader = DataLoader(val_data, batch_size=args.BSZ, shuffle=False, num_workers=0, pin_memory=True)
     test_loader = DataLoader(test_data, batch_size=args.BSZ, shuffle=False, num_workers=0, pin_memory=True)
 
-    file_path = 'log/nocxr_lr_' + str(args.LR) + '_epoch_' + str(args.EPOCHS) +'_' + str(args.TASK)+ '_' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '.txt'
+    file_path = 'log/mimiciv_lr_' + str(args.LR) + '_epoch_' + str(args.EPOCHS) +'_' + str(args.TASK)+ '_' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '.txt'
     if not os.path.exists('log'):
         os.mkdir('log')
 
@@ -173,7 +167,7 @@ def test(args):
     model = torch.nn.DataParallel(model)
     scaler = amp.GradScaler()
     best_val_auroc = 0.0
-    best_model_path = f'model_nocxr/{args.TASK}_best_model.pth'
+    best_model_path = f'model4/{args.TASK}_best_model.pth'
     
     # print('--------Start training-------')
     for epoch in range(args.EPOCHS):
@@ -181,12 +175,12 @@ def test(args):
         model.train()
         running_loss = 0.0
         for data in tqdm(train_loader, desc=f"Epoch {epoch+1}/{args.EPOCHS}"):
-            label, demo, ehr= data
+            label, img, note , demo, ehr= data
 
-            # note = note.view(-1, tk_lim, note.shape[-1]).to(device, non_blocking=True).float()
-            # if torch.isnan(note).any() or torch.isinf(note).any():
-            #     print("note is NaN or Inf!")
-            #     note = torch.nan_to_num(note)
+            note = note.view(-1, tk_lim, note.shape[-1]).to(device, non_blocking=True).float()
+            if torch.isnan(note).any() or torch.isinf(note).any():
+                print("note is NaN or Inf!")
+                note = torch.nan_to_num(note)
             demo = demo.view(-1, 1, demo.shape[-1]).to(device, non_blocking=True).float()
             if torch.isnan(demo).any() or torch.isinf(demo).any():
                 print("demo is NaN or Inf!")
@@ -200,13 +194,13 @@ def test(args):
             marital_status = demo[:, :, 1].view(-1, 1, 1).cuda(non_blocking=True).float()
             race = demo[:, :, 0].view(-1, 1, 1).cuda(non_blocking=True).float()
             insurance = demo[:, :, 2].view(-1, 1, 1).cuda(non_blocking=True).float()
-            #age = demo[:, :, 4].view(-1, 1, 1).cuda(non_blocking=True).float()
+            age = demo[:, :, 4].view(-1, 1, 1).cuda(non_blocking=True).float()
             sex = demo[:, :, 3].view(-1, 1, 1).cuda(non_blocking=True).float()
             
-            # img = img.to(device, non_blocking=True)
-            # if torch.isnan(img).any() or torch.isinf(img).any():
-            #     print("img is NaN or Inf!")
-            #     img = torch.nan_to_num(img)
+            img = img.to(device, non_blocking=True)
+            if torch.isnan(img).any() or torch.isinf(img).any():
+                print("img is NaN or Inf!")
+                img = torch.nan_to_num(img)
             label = label.to(device, non_blocking=True)
             if torch.isnan(label).any() or torch.isinf(label).any():
                 print("label is NaN or Inf!")
@@ -214,7 +208,7 @@ def test(args):
 
 
             optimizer.zero_grad()
-            loss, _, _ = model(None, None, ehr, sex, None, race, marital_status, insurance, labels=label, task=args.TASK)
+            loss, _, _ = model(img, note, ehr, sex, age, race, marital_status, insurance, labels=label, task=args.TASK)
 
             # with amp.scale_loss(loss, optimizer) as scaled_loss:
             #     scaled_loss.backward()
@@ -236,9 +230,10 @@ def test(args):
         outPRED = torch.FloatTensor().to(device, non_blocking=True)
         with torch.no_grad():
             for data in tqdm(val_loader, desc="Validation"):
-                label, demo, ehr= data
-                # note = note.view(-1, tk_lim, note.shape[-1]).to(device, non_blocking=True).float()
-                # note = torch.nan_to_num(note)
+                label, img, note , demo, ehr= data
+
+                note = note.view(-1, tk_lim, note.shape[-1]).to(device, non_blocking=True).float()
+                note = torch.nan_to_num(note)
                 demo = demo.view(-1, 1, demo.shape[-1]).to(device, non_blocking=True).float()
                 demo = torch.nan_to_num(demo)
                 ehr = ehr.view(-1, ehr_win, ehr.shape[-1]).to(device, non_blocking=True).float()
@@ -247,13 +242,14 @@ def test(args):
                 marital_status = demo[:, :, 1].view(-1, 1, 1).cuda(non_blocking=True).float()
                 race = demo[:, :, 0].view(-1, 1, 1).cuda(non_blocking=True).float()
                 insurance = demo[:, :, 2].view(-1, 1, 1).cuda(non_blocking=True).float()
-                #age = demo[:, :, 4].view(-1, 1, 1).cuda(non_blocking=True).float()
+                age = demo[:, :, 4].view(-1, 1, 1).cuda(non_blocking=True).float()
                 sex = demo[:, :, 3].view(-1, 1, 1).cuda(non_blocking=True).float()
-                #img = img.to(device, non_blocking=True)
+                img = img.to(device, non_blocking=True)
                 label = label.to(device, non_blocking=True)
 
 
-                loss, logits, _ = model(None, None, ehr, sex, None, race, marital_status, insurance, labels=label, task=args.TASK)
+                loss, logits, _ = model(img, note, ehr, sex, age, race, marital_status, insurance, labels=label, task=args.TASK)
+
 
                 val_loss += loss.item()
                 #probs = torch.sigmoid(logits) if args.TASK != 'length-of-stay' else torch.softmax(logits, dim=-1)
@@ -286,9 +282,9 @@ def test(args):
     outPRED = torch.FloatTensor().to(device, non_blocking=True)
     with torch.no_grad():
         for data in tqdm(test_loader, desc="Testing"):
-            label, demo, ehr= data
-            # note = note.view(-1, tk_lim, note.shape[-1]).to(device, non_blocking=True).float()
-            # note = torch.nan_to_num(note)
+            label, img, note , demo, ehr= data
+            note = note.view(-1, tk_lim, note.shape[-1]).to(device, non_blocking=True).float()
+            note = torch.nan_to_num(note)
             demo = demo.view(-1, 1, demo.shape[-1]).to(device, non_blocking=True).float()
             demo = torch.nan_to_num(demo)
             ehr = ehr.view(-1, ehr_win, ehr.shape[-1]).to(device, non_blocking=True).float()
@@ -297,14 +293,15 @@ def test(args):
             marital_status = demo[:, :, 1].view(-1, 1, 1).cuda(non_blocking=True).float()
             race = demo[:, :, 0].view(-1, 1, 1).cuda(non_blocking=True).float()
             insurance = demo[:, :, 2].view(-1, 1, 1).cuda(non_blocking=True).float()
-            #age = demo[:, :, 4].view(-1, 1, 1).cuda(non_blocking=True).float()
+            age = demo[:, :, 4].view(-1, 1, 1).cuda(non_blocking=True).float()
             sex = demo[:, :, 3].view(-1, 1, 1).cuda(non_blocking=True).float()
-            #img = img.to(device, non_blocking=True)
+            img = img.to(device, non_blocking=True)
             label = label.to(device, non_blocking=True)
             if args.TASK == 'length-of-stay':
                 label = label.long().view(-1)
 
-            logits, _, _ = model(None, None, ehr, sex, None, race, marital_status, insurance, task=args.TASK)
+            logits, _, _ = model(img, note, ehr, sex, age, race, marital_status, insurance, task=args.TASK)
+
             #probs = torch.sigmoid(logits) if args.TASK != 'length-of-stay' else torch.softmax(logits, dim=-1)
             if task == 'length-of-stay':
                 label = label.long().view(-1)
