@@ -31,14 +31,13 @@ import numpy as np
 import copy
 
 def my_collate(batch):
-
-    # Time series data  (When missing, use an all-zero vector with shape of [1,76])
+    # Time series data  
     ehr = [item[0][-512:] if np.array_equal(item[0], None) is False else np.zeros((1,76)) for item in batch]
     ehr, ehr_length = pad_zeros(ehr)
     mask_ehr = np.array([1 if np.array_equal(item[0], None) is False else 0 for item in batch])     # Marks whether EHR is included
     ehr_length = [0 if mask_ehr[i] == 0 else ehr_length[i] for i in range(len(ehr_length))]  # Remove fictitious time series
 
-    # CXR image data    (When missing, use an all-zero vector with shape of [3,224,224])
+    # CXR image data    
     cxr = torch.stack([item[1] if item[1] != None else torch.zeros(3, 224, 224) for item in batch])
     mask_cxr = np.array([1 if item[1] != None else 0 for item in batch])
 
@@ -176,7 +175,7 @@ def main(args):
         model_modn =  MultiModN(state_size, encoders, decoders, err_penalty, state_change_penalty) 
 
         optimizer = torch.optim.Adam(list(model_modn.parameters()), learning_rate)
-
+        # choose according to tasks
         criterion = nn.BCELoss()
         #criterion = nn.CrossEntropyLoss()
 
