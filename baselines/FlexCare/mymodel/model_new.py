@@ -55,10 +55,10 @@ class FlexCare(nn.Module):
         self.ehr_pos_embed = nn.Parameter(torch.zeros(1, 600, hidden_dim))
 
         # Process image data
-        # self.patch_projection = PatchEmbed(patch_size=16, embed_dim=hidden_dim)
-        # num_patches = (224 // 16) * (224 // 16)
-        # self.cxr_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, hidden_dim))
-        # self.cxr_cls_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
+        self.patch_projection = PatchEmbed(patch_size=16, embed_dim=hidden_dim)
+        num_patches = (224 // 16) * (224 // 16)
+        self.cxr_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, hidden_dim))
+        self.cxr_cls_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
 
         # Process text data
         self.note_projection = AutoModel.from_pretrained(cache_dir).to(device)
@@ -120,11 +120,11 @@ class FlexCare(nn.Module):
             ehr_pad_mask = length_to_mask(ehr_lengths+use_ehr, max_len=2)
 
         #cxr
-        # cxr_embed = self.patch_projection(img)
-        # cxr_cls_tokens = self.cxr_cls_token.repeat(cxr_embed.shape[0], 1, 1)
-        # cxr_embed = cxr_embed + self.cxr_pos_embed[:, :cxr_embed.shape[1], :]
-        # cxr_embed = torch.cat((cxr_cls_tokens, cxr_embed), dim=1)
-        # cxr_pad_mask = length_to_mask(use_img, max_len=1).repeat(1, cxr_embed.shape[1])
+        cxr_embed = self.patch_projection(img)
+        cxr_cls_tokens = self.cxr_cls_token.repeat(cxr_embed.shape[0], 1, 1)
+        cxr_embed = cxr_embed + self.cxr_pos_embed[:, :cxr_embed.shape[1], :]
+        cxr_embed = torch.cat((cxr_cls_tokens, cxr_embed), dim=1)
+        cxr_pad_mask = length_to_mask(use_img, max_len=1).repeat(1, cxr_embed.shape[1])
 
         # Text
         with torch.no_grad():
@@ -172,44 +172,37 @@ class FlexCare(nn.Module):
         
         # Multimodal fusion
         multimodal_cls_tokens = self.mm_cls_token
-        # 两两模态组合
-        for i in range(3):
+
+        for i in range(6):
             multimodal_cls_tokens = torch.cat((multimodal_cls_tokens, self.cross_cls_tokens[i].unsqueeze(0)), dim=1)
         multimodal_cls_tokens = multimodal_cls_tokens.repeat(ehr_embed.shape[0], 1, 1)
 
-        #multimodal_embed = torch.cat((task_embed, multimodal_cls_tokens, ehr_embed, cxr_embed, note_embed), dim=1)
-        multimodal_embed = torch.cat((task_embed, multimodal_cls_tokens, ehr_embed, note_embed, demo_embed), dim=1)
+        multimodal_embed = torch.cat((task_embed, multimodal_cls_tokens, ehr_embed, cxr_embed, note_embed, demo_embed), dim=1)
 
 
 
-        cls_pad_mask = length_to_mask(4*torch.ones(use_demo.shape).to(self.device), max_len=4)
+        cls_pad_mask = length_to_mask(7*torch.ones(use_demo.shape).to(self.device), max_len=7)
         task_pad_mask = length_to_mask(torch.ones(use_demo.shape).to(self.device), max_len=1)
 
-        #multimodal_pad_mask = torch.cat((task_pad_mask, cls_pad_mask, ehr_pad_mask, cxr_pad_mask, note_pad_mask), dim=1)
-        multimodal_pad_mask = torch.cat((task_pad_mask, cls_pad_mask, ehr_pad_mask, note_pad_mask, demo_pad_mask), dim=1)
-        '''
+        multimodal_pad_mask = torch.cat((task_pad_mask, cls_pad_mask, ehr_pad_mask, cxr_pad_mask, note_pad_mask, demo_pad_mask), dim=1)
+        
         ehr_cls_index = 8
         cxr_cls_index = ehr_cls_index + ehr_embed.shape[1]
         note_cls_index = cxr_cls_index + cxr_embed.shape[1]
         demo_cls_index = note_cls_index + note_embed.shape[1]
-        '''
-        ehr_cls_index = 5
-        note_cls_index = ehr_cls_index + ehr_embed.shape[1]
-        demo_cls_index = note_cls_index + note_embed.shape[1]
+
 
         # Mask that enables modality combination tokens to precisely target information relevant to diverse modality combination patterns
-        #cross_cls_mask = generate_cross_modal_mask(ehr_cls_index, cxr_cls_index, note_cls_index, multimodal_embed.shape[1]).to(self.device)
-        cross_cls_mask = generate_cross_modal_mask(ehr_cls_index=ehr_cls_index, cxr_cls_index=None, note_cls_index=note_cls_index, demo_cls_index=demo_cls_index, total_lens=multimodal_embed.shape[1]).to(self.device)
+        cross_cls_mask = generate_cross_modal_mask(ehr_cls_index=ehr_cls_index, cxr_cls_index=cxr_cls_index, note_cls_index=note_cls_index, demo_cls_index=demo_cls_index, total_lens=multimodal_embed.shape[1]).to(self.device)
         multimodal_embed = torch.transpose(multimodal_embed, 0, 1)
         fusion_embed = self.transformer_fusion(multimodal_embed, mask=cross_cls_mask, src_key_padding_mask=multimodal_pad_mask)  #
         fusion_embed = torch.transpose(fusion_embed, 0, 1)
 
         task_mm_embed = fusion_embed[:, 0]
-        # mm_embed = torch.cat((fusion_embed[:, 1:ehr_cls_index], fusion_embed[:, ehr_cls_index].unsqueeze(1), fusion_embed[:, cxr_cls_index].unsqueeze(1), fusion_embed[:, note_cls_index].unsqueeze(1)), dim=1)
-        mm_embed = torch.cat((fusion_embed[:, 1:ehr_cls_index], fusion_embed[:, ehr_cls_index].unsqueeze(1), fusion_embed[:, note_cls_index].unsqueeze(1), fusion_embed[:, demo_cls_index].unsqueeze(1)), dim=1)
+        mm_embed = torch.cat((fusion_embed[:, 1:ehr_cls_index], fusion_embed[:, ehr_cls_index].unsqueeze(1), fusion_embed[:, cxr_cls_index].unsqueeze(1), fusion_embed[:, note_cls_index].unsqueeze(1), fusion_embed[:, demo_cls_index].unsqueeze(1)), dim=1)
         # Mask that indicates which modality combination tokens are missing
         mm_mask = torch.ones(mm_embed.shape[0], mm_embed.shape[1]).to(self.device)
-        '''
+        
         mm_mask[:, 0] = ehr_pad_mask[:, 0] | cxr_pad_mask[:, 0] | note_pad_mask[:, 0] | demo_pad_mask[:, 0] 
         mm_mask[:, 1] = ehr_pad_mask[:, 0] | cxr_pad_mask[:, 0]
         mm_mask[:, 2] = ehr_pad_mask[:, 0] | note_pad_mask[:, 0]
@@ -222,25 +215,14 @@ class FlexCare(nn.Module):
         mm_mask[:, 9] = note_pad_mask[:, 0]
         mm_mask[:, 10] = demo_pad_mask[:, 0]
 
-        # print(mm_embed.shape)
-        # print(mm_mask.shape)
-        # print(task_mm_embed.unsqueeze(1).shape)
-        '''
-        mm_mask[:, 0] = ehr_pad_mask[:, 0] | note_pad_mask[:, 0] | demo_pad_mask[:, 0]
-        mm_mask[:, 1] = ehr_pad_mask[:, 0] | note_pad_mask[:, 0]
-        mm_mask[:, 2] = ehr_pad_mask[:, 0] | demo_pad_mask[:, 0]
-        mm_mask[:, 3] = note_pad_mask[:, 0] | demo_pad_mask[:, 0]
-        mm_mask[:, 4] = ehr_pad_mask[:, 0]
-        mm_mask[:, 5] = note_pad_mask[:, 0]
-        mm_mask[:, 6] = demo_pad_mask[:, 0]
 
 
         mm_moe = torch.zeros(mm_embed.shape[0]*mm_embed.shape[1], mm_embed.shape[2]).to(self.device)
 
-        #cat_task_mm = task_mm_embed.unsqueeze(1).repeat(1, 11, 1)
-        cat_task_mm = task_mm_embed.unsqueeze(1).repeat(1, 7, 1)
+        cat_task_mm = task_mm_embed.unsqueeze(1).repeat(1, 11, 1)
 
-        # 使用MoE
+
+        # MoE 
         tmp_moe, moe_loss = self.moe(cat_task_mm.reshape(-1, cat_task_mm.shape[2])[mm_mask.reshape(-1) == 0],     # ,moe_loss
                             mm_embed.reshape(-1, mm_embed.shape[2])[mm_mask.reshape(-1) == 0])
 
@@ -250,8 +232,8 @@ class FlexCare(nn.Module):
         mm_moe = mm_moe.reshape(mm_embed.shape[0], mm_embed.shape[1], mm_embed.shape[2])
 
 
-        #cat_task_mm = torch.cat((task_mm_embed.unsqueeze(1).repeat(1, 11, 1), mm_moe), 2)
-        cat_task_mm = torch.cat((task_mm_embed.unsqueeze(1).repeat(1, 7, 1), mm_moe), 2)
+        cat_task_mm = torch.cat((task_mm_embed.unsqueeze(1).repeat(1, 11, 1), mm_moe), 2)
+
         # attention score
         weight = temperature_scaled_softmax(self.mm_choose2(torch.tanh(self.mm_choose(cat_task_mm))).squeeze(2) + (-mm_mask * 1e7), temperature=0.2, dim=1)
         try_mm = mm_moe * weight.unsqueeze(2).repeat(1, 1, mm_moe.shape[-1])
@@ -279,17 +261,11 @@ class FlexCare(nn.Module):
             scores = torch.sigmoid(out)
 
         # Calculate needed loss
-
-        # 1. Decorrelation loss of combination representation
         ortho_loss = calculate_ortho_loss(mm_embed)
-
-
-
         pred_loss = criterion(scores, labels)
         loss = pred_loss + ortho_loss + moe_loss
 
         if self.training is True:
-            #return scores, ortho_loss, mmoe_loss, graph_loss 
             return scores, loss
         else:
             return scores
