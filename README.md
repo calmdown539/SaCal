@@ -103,5 +103,9 @@ python my_main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --tas
 Run Baselines
 ----
 All commands are in file "run.sh", and each baseline model is in [baselines]. All baselines can take processed data stored in [data] as described  in "Data preparation" part.
-To run a specific baseline, first open [baselines/(modelname)]. 
-For example, to run FlexCare, open [baselines/FlexCare], then enter the run command of FlexCare in "run.sh".
+
+For example, to run FlexCare, open [baselines/FlexCare], then enter the run command of FlexCare in "run.sh":
+``
+python main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
+--task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 10 --lr 0.0005 --device cuda 
+``
