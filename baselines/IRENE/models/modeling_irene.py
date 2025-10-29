@@ -40,12 +40,9 @@ class Transformer(nn.Module):
         self.encoder = Encoder(config, vis)
 
     def forward(self, input_ids, cc=None, ehr=None, sex=None, age=None, race=None, marital_status=None, insurance=None):
-        #embedding_output, cc, ehr, sex, age, race, marital_status, insurance = self.embeddings(input_ids, cc, ehr, sex, age, race, marital_status, insurance)
-        # NO CXR
-        # cc, ehr, sex, age, race, marital_status, insurance = self.embeddings(input_ids, cc, ehr, sex, age, race, marital_status, insurance)
-        # MIMIC3
-        ehr, sex, race, marital_status, insurance = self.embeddings(input_ids, cc, ehr, sex, age, race, marital_status, insurance)
-        text = torch.cat(( ehr, sex, race, marital_status, insurance), 1)
+        embedding_output, cc, ehr, sex, age, race, marital_status, insurance = self.embeddings(input_ids, cc, ehr, sex, age, race, marital_status, insurance)
+        
+        text = torch.cat(( ehr, sex, age, race, marital_status, insurance), 1)
 
         encoded, attn_weights = self.encoder(None, text)
         return encoded, attn_weights
