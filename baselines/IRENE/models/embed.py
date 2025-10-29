@@ -78,16 +78,9 @@ class Embeddings(nn.Module):
         B = ehr.shape[0]
         cls_tokens = self.cls_token.expand(B, -1, -1)
 
-        # if self.hybrid:
-        #     x = self.hybrid_model(x)
-        # x = self.patch_embeddings(x) # 16*16 --> CNN --> 1*1
-        # cc = self.cc_embeddings(cc)
-        # ehr = self.ehr_embeddings(ehr)
-        # sex = self.sex_embeddings(sex)
-        # age = self.age_embeddings(age)
-        # race = self.race_embeddings(race)
-        # marital_status = self.marital_status_embeddings(marital_status)
-        # insurance = self.insurance_embeddings(insurance)
+        if self.hybrid:
+            x = self.hybrid_model(x)
+        x = self.patch_embeddings(x) # 16*16 --> CNN --> 1*1
         def safe_tensor(t, name="tensor"):
             if torch.isnan(t).any() or torch.isinf(t).any():
                 print(f"[Embeddings] Warning: {name} contains NaN or Inf")
@@ -95,37 +88,36 @@ class Embeddings(nn.Module):
             t = torch.clamp(t, min=-1e4, max=1e4)
             return t
 
-        #cc = safe_tensor(self.cc_embeddings(cc), "cc embedding")
+        cc = safe_tensor(self.cc_embeddings(cc), "cc embedding")
         ehr = safe_tensor(self.ehr_embeddings(ehr), "ehr embedding")
         sex = safe_tensor(self.sex_embeddings(sex), "sex embedding")
-        #age = safe_tensor(self.age_embeddings(age), "age embedding")
+        age = safe_tensor(self.age_embeddings(age), "age embedding")
         race = safe_tensor(self.race_embeddings(race), "race embedding")
         marital_status = safe_tensor(self.marital_status_embeddings(marital_status), "marital_status embedding")
         insurance = safe_tensor(self.insurance_embeddings(insurance), "insurance embedding")
 
-        # x = x.flatten(2)
-        # x = x.transpose(-1, -2)
-        # x = torch.cat((cls_tokens, x), dim=1)
+        x = x.flatten(2)
+        x = x.transpose(-1, -2)
+        x = torch.cat((cls_tokens, x), dim=1)
 
-        # embeddings = x + self.position_embeddings
-        #cc_embeddings = cc + self.pe_cc
+        embeddings = x + self.position_embeddings
+        cc_embeddings = cc + self.pe_cc
         ehr_embeddings = ehr + self.pe_ehr
         sex_embeddings = sex + self.pe_sex
-        #age_embeddings = age + self.pe_age
+        age_embeddings = age + self.pe_age
         race_embeddings = race + self.pe_race
         marital_status_embeddings = marital_status + self.pe_marital_status
         insurance_embeddings = insurance + self.pe_insurance
 
-        #embeddings = self.dropout(embeddings)
-        #cc_embeddings = self.dropout_cc(cc_embeddings)
+        embeddings = self.dropout(embeddings)
+        cc_embeddings = self.dropout_cc(cc_embeddings)
         ehr_embeddings = self.dropout_ehr(ehr_embeddings)
         sex_embeddings = self.dropout_sex(sex_embeddings)
-        #age_embeddings = self.dropout_age(age_embeddings)
+        age_embeddings = self.dropout_age(age_embeddings)
         race_embeddings = self.dropout_race(race_embeddings)
         marital_status_embeddings = self.dropout_marital_status(marital_status_embeddings)
         insurance_embeddings = self.dropout_insurance(insurance_embeddings)
-        #return embeddings, cc_embeddings, ehr_embeddings, sex_embeddings, age_embeddings, race_embeddings, marital_status_embeddings, insurance_embeddings
-        #return cc_embeddings, ehr_embeddings, sex_embeddings, age_embeddings, race_embeddings, marital_status_embeddings, insurance_embeddings
-        return ehr_embeddings, sex_embeddings, race_embeddings, marital_status_embeddings, insurance_embeddings
+        return embeddings, cc_embeddings, ehr_embeddings, sex_embeddings, age_embeddings, race_embeddings, marital_status_embeddings, insurance_embeddings
+
 
 
