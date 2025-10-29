@@ -53,8 +53,8 @@ SaCal/
 │   ├── README.md            # Instruction for data processing
 │   ├── utils.py             # Functions for preprocessing
 │   ├── __init__.py          # Initiate
-│   ├── subject.py           # 
-│   ├── readers.py           #
+│   ├── subject.py           # Functions for specific modality data processing
+│   ├── readers.py           # Read data for different tasks
 │   ├── mimic3csv.py         # Functions for mimic dataset processing
 │   ├── preprocessing.py     # Data Preprocessing
 │   ├── resources/           # Detailed information of ICD9 and ICD10 for preprocessing
@@ -100,3 +100,8 @@ Model training
 python my_main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 15 --lr 0.0001 --device cuda --seed {40,42,44,46,48}
 ``
 
+Run Baselines
+----
+All commands are in file "run.sh", and each baseline model is in [baselines]. All baselines can take processed data stored in [data] as described  in "Data preparation" part.
+To run a specific baseline, first open [baselines/(modelname)]. 
+For example, to run FlexCare, open [baselines/FlexCare], then enter the run command of FlexCare in "run.sh".
