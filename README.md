@@ -43,6 +43,7 @@ SaCal/
 ├── arguments.py             # Configuration file (e.g., hyperparameters, paths)
 ├── utils.py                 # Calculation of metrics and others
 ├── my_main.py               # Model training
+├── main_dc.py               # Model training for different design choices
 │
 ├── normoalizers/            # Definition of normoalizers for data loading
 │  
@@ -61,9 +62,12 @@ SaCal/
 │   └── scripts/             # Multimodal extraction and multitask dataset creation  
 │         
 ├── mymodel/                 # Model definitions
-│   ├── fusion_model.py      # Model architecture 
-│   ├── module.py            # Architecture of modules used in fusion_model.py, e.g., Transformer or MoE
+│   ├── fusion_model.py      # Model architecture
+│   ├── design_choices.py    # Model architecture of design choices
+│   ├── module.py            # Architecture of modules used in fusion_model.py, e.g., CoS-Fuser
 │   └── graph_MMoE.py        # Definition of Task-to-Module Graph and MTL
+│   └── my_MMoE.py           # Definition of MoE and MMoE to replace Task-to-Module Graph for MTL
+│   └── module_dc.py         # Architecture of modules used in design_choices, e.g., Transformer or MoE-Fuser
 │
 └── baselines/               # Baselines
     ├── FlexCare/            # Implementation of FlexCare
