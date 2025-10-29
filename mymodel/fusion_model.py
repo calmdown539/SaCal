@@ -199,7 +199,6 @@ class OurModel(nn.Module):
     
 
         multimodal_pad_mask = torch.cat((cls_pad_mask, ehr_pad_mask, cxr_pad_mask, note_pad_mask, demo_pad_mask), dim=1)
-        #multimodal_pad_mask = torch.cat((task_pad_mask, cls_pad_mask, ehr_pad_mask, note_pad_mask, demo_pad_mask), dim=1)
 
         ehr_cls_index = 7
         cxr_cls_index = ehr_cls_index + ehr_embed.shape[1]
