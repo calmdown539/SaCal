@@ -30,3 +30,6 @@ python main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr \
 
 ### SaCal ###
 python my_main.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 10 --lr 0.0001 --device cuda --seed 40
+
+### Design choices of SaCal, e.g., MoE-Fuser, TF-Fuser, MoE, MMoE ###
+python main_dc.py --data_path data --ehr_path data/ehr --cxr_path data/cxr --task in-hospital-mortality,length-of-stay,decompensation,phenotyping,readmission --epochs 10 --lr 0.0001 --device cuda --seed 40
