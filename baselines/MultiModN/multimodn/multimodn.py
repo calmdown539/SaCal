@@ -131,9 +131,9 @@ class MultiModN(nn.Module):
 
         self.patch_projection = PatchEmbed(patch_size=16, embed_dim=hidden_dim)
 
-        # cache_dir = "/data2/linfx/FlexCare-main/mymodel/pretrained/biobert-base-cased-v1.2"
-        # self.note_projection = AutoModel.from_pretrained(cache_dir).to(self.device)
-        # self.tokenizer = AutoTokenizer.from_pretrained(cache_dir)
+        cache_dir = "mymodel/pretrained/biobert-base-cased-v1.2"
+        self.note_projection = AutoModel.from_pretrained(cache_dir).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(cache_dir)
 
 
         self.to(self.device)  # Move to device
@@ -175,27 +175,26 @@ class MultiModN(nn.Module):
                 new = [float(x) if x != '' else 0.0 for x in line]
                 new_demo.append(np.array(new))
             demo_embed = torch.from_numpy(np.array(new_demo)).float().to(self.device)
-            # 预处理数据
-            #ehr_embed = self.ehr_projection(ehr)
+
             ehr_embed =torch.mean(ehr,dim=1)
 
-            # cxr_embed = self.patch_projection(img)
-            # cxr_embed =torch.mean(cxr_embed,dim=1)
+            cxr_embed = self.patch_projection(img)
+            cxr_embed =torch.mean(cxr_embed,dim=1)
 
-            # with torch.no_grad():
-            #     encoding = self.tokenizer(note, padding=True, truncation=True, max_length=512, add_special_tokens=False, return_tensors='pt')
-            #     input_ids = encoding["input_ids"].to(self.device)
-            #     attention_mask = encoding["attention_mask"].to(self.device)
-            #     # if there is no text in this batch
-            #     if attention_mask.sum()!=0:
-            #         outputs = self.note_projection(input_ids, attention_mask=attention_mask)
-            #         note_embed = outputs.last_hidden_state
-            #     else:
-            #         note_embed = torch.zeros((len(note), 1, self.note_fc.in_features)).to(self.device)
-            #         attention_mask = torch.zeros((len(note), 1)).int().to(self.device)
-            # note_embed = torch.mean(note_embed,dim = 1)
+            with torch.no_grad():
+                encoding = self.tokenizer(note, padding=True, truncation=True, max_length=512, add_special_tokens=False, return_tensors='pt')
+                input_ids = encoding["input_ids"].to(self.device)
+                attention_mask = encoding["attention_mask"].to(self.device)
+                # if there is no text in this batch
+                if attention_mask.sum()!=0:
+                    outputs = self.note_projection(input_ids, attention_mask=attention_mask)
+                    note_embed = outputs.last_hidden_state
+                else:
+                    note_embed = torch.zeros((len(note), 1, self.note_fc.in_features)).to(self.device)
+                    attention_mask = torch.zeros((len(note), 1)).int().to(self.device)
+            note_embed = torch.mean(note_embed,dim = 1)
 
-            data_encoders = [ehr_embed, demo_embed]
+            data_encoders = [ehr_embed, demo_embed, cxr_embed, note_embed]
 
             encoder_sequence = None
             batch_size = ehr.shape[0]
@@ -209,10 +208,8 @@ class MultiModN(nn.Module):
             tn = torch.zeros((len(self.encoders)+1, len(self.decoders))).to(self.device)
             fp = torch.zeros((len(self.encoders)+1, len(self.decoders))).to(self.device)
             fn = torch.zeros((len(self.encoders)+1, len(self.decoders))).to(self.device)
-            # target = target[:,[0, 1, 3]]
             target = torch.from_numpy(target).float().to(self.device)
-            #target = target.type(torch.LongTensor)
-            #target = target.to(self.device)
+
 
             optimizer.zero_grad()
 
@@ -380,22 +377,22 @@ class MultiModN(nn.Module):
                 #ehr_embed = self.ehr_projection(ehr)
                 ehr_embed =torch.mean(ehr,dim=1)
 
-                # cxr_embed = self.patch_projection(img)
-                # cxr_embed =torch.mean(cxr_embed,dim=1)
-                # with torch.no_grad():
-                #     encoding = self.tokenizer(note, padding=True, truncation=True, max_length=512, add_special_tokens=False, return_tensors='pt')
-                #     input_ids = encoding["input_ids"].to(self.device)
-                #     attention_mask = encoding["attention_mask"].to(self.device)
-                #     # if there is no text in this batch
-                #     if attention_mask.sum()!=0:
-                #         outputs = self.note_projection(input_ids, attention_mask=attention_mask)
-                #         note_embed = outputs.last_hidden_state
-                #     else:
-                #         note_embed = torch.zeros((len(note), 1, self.note_fc.in_features)).to(self.device)
-                #         attention_mask = torch.zeros((len(note), 1)).int().to(self.device)
-                # note_embed = torch.mean(note_embed,dim = 1)
+                cxr_embed = self.patch_projection(img)
+                cxr_embed =torch.mean(cxr_embed,dim=1)
+                with torch.no_grad():
+                    encoding = self.tokenizer(note, padding=True, truncation=True, max_length=512, add_special_tokens=False, return_tensors='pt')
+                    input_ids = encoding["input_ids"].to(self.device)
+                    attention_mask = encoding["attention_mask"].to(self.device)
+                    # if there is no text in this batch
+                    if attention_mask.sum()!=0:
+                        outputs = self.note_projection(input_ids, attention_mask=attention_mask)
+                        note_embed = outputs.last_hidden_state
+                    else:
+                        note_embed = torch.zeros((len(note), 1, self.note_fc.in_features)).to(self.device)
+                        attention_mask = torch.zeros((len(note), 1)).int().to(self.device)
+                note_embed = torch.mean(note_embed,dim = 1)
 
-                data_encoders = [ehr_embed, demo_embed]
+                data_encoders = [ehr_embed, demo_embed, cxr_embed, note_embed]
 
                 encoder_sequence = None
                 
@@ -410,11 +407,8 @@ class MultiModN(nn.Module):
                 fp = torch.zeros((len(self.encoders) + 1, len(self.decoders))).to(self.device)
                 fn = torch.zeros((len(self.encoders) + 1, len(self.decoders))).to(self.device)
 
-                #target = target[:,[0, 1, 3]]
-                target = torch.from_numpy(target).float().to(self.device)
-                #target = target.type(torch.LongTensor)
-                #target = target.to(self.device)
 
+                target = torch.from_numpy(target).float().to(self.device)
                 state: Tensor = self.init_state(batch_size)
 
                 if batch_idx == 0:  
